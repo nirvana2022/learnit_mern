@@ -1,31 +1,45 @@
-/* Importación de componentes de datos */
 import { courses } from "./datos/cursos.js";
-/* Importación de librería de express */
 import express, { request, response } from "express";
-/* Importación de métodos de zod para manipulación y validaciones de datos */
 import { checkCourse, checkUpCourse } from "./helpers/zod.js";
+import cors from "cors";
+import mongoose from "mongoose";
+import connectDB from "./db.js"; // Importa la conexión a MongoDB
 
-/* Imlementación de nuestra app mediante express */
 const app = express();
 
-/* Impelmentación de middleware(recibe datos del front y los devuelve) */
 app.use(express.json());
+app.use(
+  cors({
+    origin: "http://localhost:3001",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    credentials: true,
+  })
+);
 
-/* Puerto del servidor */
 const PORT = 3000;
 
-/* Variable para inicializar los datos de los cursos */
-let coursesDevolver = courses;
+// Conectar a MongoDB
+connectDB();
 
-/* Método para consultar todos los cursos */
-app.get("/api/courses", (request, response) => {
-  response.json(coursesDevolver);
+// Esquema de Mongoose para los cursos
+const courseSchema = new mongoose.Schema({
+  _idCourse: Number,
+  nameCourse: String,
+  descCourse: String,
 });
 
-/* Método para consultar un curso especifico */
-app.get("/api/courses/:id", (request, response) => {
+const Course = mongoose.model("Course", courseSchema);
+
+// Método para consultar todos los cursos
+app.get("/api/courses", async (request, response) => {
+  const courses = await Course.find();
+  response.json(courses);
+});
+
+// Método para consultar un curso específico
+app.get("/api/courses/:id", async (request, response) => {
   const idCourse = Number(request.params.id);
-  const course = coursesDevolver.find((course) => course._idCourse == idCourse);
+  const course = await Course.findOne({ _idCourse: idCourse });
 
   if (course) {
     response.json(course);
@@ -34,22 +48,16 @@ app.get("/api/courses/:id", (request, response) => {
   }
 });
 
-/* Método para eliminar un curso especifico */
-app.delete("/api/courses/:id", (request, response) => {
+// Método para eliminar un curso específico
+app.delete("/api/courses/:id", async (request, response) => {
   const idCourse = Number(request.params.id);
-  coursesDevolver = coursesDevolver.filter(
-    (course) => course._idCourse != idCourse
-  );
-  if (coursesDevolver) {
-    response.json(coursesDevolver);
-  } else {
-    response.status(400).end();
-  }
+  await Course.deleteOne({ _idCourse: idCourse });
+  const courses = await Course.find();
+  response.json(courses);
 });
 
-/* Método para crear un curso nuevo */
-app.post("/api/courses", (request, response) => {
-  /* Validación de informacion recibida en el body para crear un curso mediante helpers con zod */
+// Método para crear un curso nuevo
+app.post("/api/courses", async (request, response) => {
   const course = checkCourse(request.body);
 
   if (course.error) {
@@ -58,24 +66,13 @@ app.post("/api/courses", (request, response) => {
       .json("El formato de los datos ingresados no es valido...");
   }
 
-  const newCourse = {
-    ...course.data,
-  };
-
-  /*  Para uso sin zod 
-  const newCourse = {
-    _idCourse: course._idCourse,
-    nameCourse: course.nameCourse,
-    descCourse: course.descCourse,
-  }; */
-
-  coursesDevolver = [...coursesDevolver, newCourse];
-
+  const newCourse = new Course(course.data);
+  await newCourse.save();
   response.json(newCourse);
 });
 
-/* Método para actualizar un curso */
-app.put("/api/courses/:id", (request, response) => {
+// Método para actualizar un curso
+app.put("/api/courses/:id", async (request, response) => {
   const idCourse = Number(request.params.id);
   const courseCheck = checkUpCourse(request.body);
 
@@ -84,22 +81,20 @@ app.put("/api/courses/:id", (request, response) => {
       .status(400)
       .json("El formato de los datos ingresados no es valido...");
   }
-  const courseIndice = coursesDevolver.findIndex(
-    (course) => course._idCourse == idCourse
+
+  const updatedCourse = await Course.findOneAndUpdate(
+    { _idCourse: idCourse },
+    courseCheck.data,
+    { new: true }
   );
 
-  if (courseIndice == -1) {
-    return response.status(400).json("Articulo no encontrado");
+  if (!updatedCourse) {
+    return response.status(400).json("Curso no encontrado");
   }
-  const newCourse = {
-    ...coursesDevolver[courseIndice],
-    ...courseCheck.data,
-  };
-  coursesDevolver[courseIndice] == newCourse;
-  response.json(newCourse);
+
+  response.json(updatedCourse);
 });
 
-/* Verificación de puesta en marcha del servidor */
 app.listen(PORT, () => {
-  console.log("Servidor ejecutandode en el puerto: " + PORT);
+  console.log("Servidor ejecutandose en el puerto: " + PORT);
 });
