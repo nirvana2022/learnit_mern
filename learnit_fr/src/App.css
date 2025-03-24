@@ -18,12 +18,21 @@ body {
 nav {
   background-color: #333;
   padding: 10px;
+  border-color: greenyellow;
+  border-style: hidden;
 }
 
 nav a {
   color: white;
-  margin: 0 10px;
+  margin: 0 7px;
   text-decoration: none;
+  background-color: green;
+  padding: 6px;
+}
+
+nav a:hover {
+  background-color: greenyellow;
+  color: #333;
 }
 
 form {
@@ -51,4 +60,15 @@ li {
   margin: 10px 0;
   padding: 10px;
   border: 1px solid #ccc;
+}
+
+.encabezado h1 {
+  text-align: center;
+  color: #333;
+  padding: 5px;
+}
+
+.cuerpo h4 {
+  text-align: center;
+  padding: 5px;
 }
